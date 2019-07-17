@@ -44,9 +44,6 @@ class NearestAPI final : public BaseAPI
 
                 util::json::Array nodes;
 
-                std::uint64_t from_node = 0;
-                std::uint64_t to_node = 0;
-
                 datafacade::BaseDataFacade::NodeForwardRange forward_geometry;
                 if (phantom_node.forward_segment_id.enabled)
                 {
@@ -54,32 +51,14 @@ class NearestAPI final : public BaseAPI
                     const auto geometry_id = facade.GetGeometryIndex(segment_id).id;
                     forward_geometry = facade.GetUncompressedForwardGeometry(geometry_id);
 
-                    auto osm_node_id = facade.GetOSMNodeIDOfNode(
-                        forward_geometry(phantom_node.fwd_segment_position));
-                    to_node = static_cast<std::uint64_t>(osm_node_id);
+                    for (auto it = forward_geometry.begin(); it != forward_geometry.end(); ++it) {
+                        auto elem = *it; 
+                        const std::uint64_t osm_node = (std::uint64_t) facade.GetOSMNodeIDOfNode(elem);
+                        nodes.values.push_back(osm_node);
+                    }
                 }
 
-                if (phantom_node.reverse_segment_id.enabled)
-                {
-                    auto segment_id = phantom_node.reverse_segment_id.id;
-                    const auto geometry_id = facade.GetGeometryIndex(segment_id).id;
-                    const auto geometry = facade.GetUncompressedForwardGeometry(geometry_id);
-                    auto osm_node_id =
-                        facade.GetOSMNodeIDOfNode(geometry(phantom_node.fwd_segment_position + 1));
-                    from_node = static_cast<std::uint64_t>(osm_node_id);
-                }
-                else if (phantom_node.forward_segment_id.enabled &&
-                         phantom_node.fwd_segment_position > 0)
-                {
-                    // In the case of one way, rely on forward segment only
-                    auto osm_node_id = facade.GetOSMNodeIDOfNode(
-                        forward_geometry(phantom_node.fwd_segment_position - 1));
-                    from_node = static_cast<std::uint64_t>(osm_node_id);
-                }
-                nodes.values.push_back(from_node);
-                nodes.values.push_back(to_node);
                 waypoint.values["nodes"] = std::move(nodes);
-
                 return waypoint;
             });
 
